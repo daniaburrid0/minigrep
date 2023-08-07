@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fs;
 
 pub struct Config {
@@ -6,40 +7,35 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn new(args: &[String]) -> Result<Config, &'static str> {
+    pub fn new(args: &[String]) -> Result<Config, Box<dyn Error>> {
         if args.len() < 3 {
-            return Err("not enough arguments");
+            return Err("not enough arguments".into());
         }
         let query = args[2].clone();
         let filename = args[1].clone();
 
-        Ok(Config {
-            query,
-            filename,
-        })
+        Ok(Config { query, filename })
     }
 }
 
-pub fn run(config: Config) {
-    let content = fs::read_to_string(config.filename).expect("Something went wrong reading the file");
+pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let content = fs::read_to_string(&config.filename)?;
     let found = search(&config.query, &content);
 
     if found.is_empty() {
         println!("No results found");
-        return;
+    } else {
+        for elem in &found {
+            println!("{}", elem);
+        }
     }
 
-    for elem in found {
-        println!("{}", elem);
-    }
+    Ok(())
 }
 
 fn search<'a>(query: &str, content: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
-    for line in content.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-    results
+    content
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
